@@ -565,13 +565,29 @@ addEventListener('pointermove',function(e){mx=e.clientX});
   function sandboxOf(it){
     return 'allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock'+(it.isolate?'':' allow-same-origin');
   }
+  /* 미리보기: 작품 내용이 창보다 작으면 가운데로 옮겨서 보여줌 */
+  function centerPv(){
+    var box=$('#pPreview'),f=box.querySelector('iframe');
+    if(!f||!f._fit)return;
+    var W=box.clientWidth,H=box.clientHeight,b=f._fit;
+    if(!W||!H)return;
+    var dx=b.w<W*.97?(W-b.w)/2-b.l:0,dy=b.h<H*.97?(H-b.h)/2-b.t:0;
+    f.style.transform='translate('+Math.round(dx)+'px,'+Math.round(dy)+'px)';
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data;if(!d||d.pvFit!==1)return;
+    var f=$('#pPreview iframe');
+    if(f&&f.contentWindow===e.source){f._fit=d;centerPv()}
+  });
+  if('ResizeObserver' in window)new ResizeObserver(centerPv).observe($('#pPreview'));
   function mountFrame(){
     var box=$('#pPreview');box.textContent='';
     if(!current)return;
     var f=document.createElement('iframe');
     f.title=current.title+' 미리보기';
     f.setAttribute('sandbox',sandboxOf(current));
-    f.srcdoc=current.code;
+    f.style.transition='transform .2s';
+    f.srcdoc=current.code+MEASURE.replace('thumbFit:1','pvFit:1');
     box.append(f);
   }
   function setTab(n){
