@@ -399,8 +399,34 @@ pre{margin:0;padding:20px;font-family:var(--mono);font-size:12.5px;line-height:1
     es.forEach(function(e){if(e.isIntersecting){io.unobserve(e.target);mountThumb(e.target)}});
   },{rootMargin:'240px'}):null;
   var ro=('ResizeObserver' in window)?new ResizeObserver(function(es){
-    es.forEach(function(e){var f=e.target.querySelector('.thumb');if(f)f.style.transform='scale('+e.contentRect.width/1280+')'});
+    es.forEach(function(e){var f=e.target.querySelector('.thumb');if(f)fitThumb(f,e.target)});
   }):null;
+
+  /* 썸네일: 작품 내용이 작으면 카드에 꽉 차게 확대해서 보여줌 */
+  var MEASURE='<script>addEventListener("load",function(){setTimeout(function(){try{'
+   +'var W=innerWidth,H=innerHeight,l=1e9,t=1e9,r=0,b=0,n=0;'
+   +'document.body.querySelectorAll("*").forEach(function(e){'
+   +'var g=e.tagName;if(g==="SCRIPT"||g==="STYLE"||g==="LINK"||g==="META"||g==="TITLE")return;'
+   +'var c=getComputedStyle(e);if(c.display==="none"||c.visibility==="hidden"||c.opacity==="0")return;'
+   +'var q=e.getBoundingClientRect();if(q.width<2||q.height<2)return;'
+   +'if(q.width>=W*.98&&q.height>=H*.98)return;'
+   +'l=Math.min(l,Math.max(0,q.left));t=Math.min(t,Math.max(0,q.top));r=Math.max(r,Math.min(W,q.right));b=Math.max(b,Math.min(H,q.bottom));n++});'
+   +'if(n)parent.postMessage({thumbFit:1,l:l,t:t,w:r-l,h:b-t},"*")}catch(x){}},500)});<\/script>';
+  function fitThumb(f,cov){
+    var cw=cov.clientWidth,ch=cov.clientHeight,s=cw/1280,x=0,y=0,b=f._fit;
+    if(b&&b.w>0&&b.h>0){
+      var z=Math.min(cw*.88/b.w,ch*.88/b.h);
+      z=Math.min(z,s*4);
+      if(z>s*1.15){s=z;x=(cw-b.w*s)/2-b.l*s;y=(ch-b.h*s)/2-b.t*s}
+    }
+    f.style.transform='translate('+x+'px,'+y+'px) scale('+s+')';
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data;if(!d||d.thumbFit!==1)return;
+    document.querySelectorAll('.thumb').forEach(function(f){
+      if(f.contentWindow===e.source){f._fit=d;fitThumb(f,f.parentNode)}
+    });
+  });
   function mountThumb(cov){
     var it=items.filter(function(x){return x.id===cov.getAttribute('data-thumb')})[0];
     if(!it)return;
@@ -409,9 +435,9 @@ pre{margin:0;padding:20px;font-family:var(--mono);font-size:12.5px;line-height:1
       var f=document.createElement('iframe');
       f.className='thumb';f.tabIndex=-1;f.setAttribute('aria-hidden','true');
       f.setAttribute('sandbox','allow-scripts');f.setAttribute('scrolling','no');
-      f.style.transform='scale('+(cov.clientWidth/1280)+')';
+      fitThumb(f,cov);
       f.addEventListener('load',function(){f.classList.add('on')});
-      f.srcdoc=code;cov.append(f);
+      f.srcdoc=code+MEASURE;cov.append(f);
       if(ro)ro.observe(cov);
     });
   }
